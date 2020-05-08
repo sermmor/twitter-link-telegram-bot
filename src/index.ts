@@ -9,7 +9,7 @@ import { TelegrafContext } from 'telegraf/typings/context';
 const networksPath = 'build/networks.json';
 const maxNumberOfTweetsWithLinks = 2000;
 const tweetsByResquest = 200; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
-const fifteenMinutesInMilliseconds = 1000 * 60 * 15;
+const sixteenMinutesInMilliseconds = 1000 * 60 * 16;
 
 let accTweets: MessageData[] = [];
 let allResponseAcc: any[] = [];
@@ -76,8 +76,9 @@ const handleTwitsWithLinks = (
     tweets: MessageData[],
     error?: any
 ) => {
-    console.log("> The bot has been called.");
+    console.log("> The bot is going to launch a result.");
     // Send tweets to Telegram (1 tweet by second).
+    const lastIndex = (tweets && tweets.length > 0) ? tweets.length : 0;
     tweets.forEach((tw: MessageData, index: number) => {
         setTimeout(() => {
             ctx.reply(
@@ -89,8 +90,10 @@ const handleTwitsWithLinks = (
     if (error) {
         // https://developer.twitter.com/en/docs/basics/rate-limiting
         // https://developer.twitter.com/en/docs/tweets/timelines/faq
-        ctx.reply(`Error message: [${error[0].code}] ${error[0].message}`);
-        ctx.reply(`Wait until for the next 15 minutes...`);
+        setTimeout(() => {
+            ctx.reply(`Error message: [${error[0].code}] ${error[0].message}`);
+            ctx.reply(`Wait until for the next 16 minutes...`);
+        }, lastIndex * 1000);
         setTimeout(() => {
             accTweets = [];
             allResponseAcc = [];
@@ -102,7 +105,7 @@ const handleTwitsWithLinks = (
                 handleTwitsWithLinks,
                 nextCurrentMaxId
             );
-        }, fifteenMinutesInMilliseconds);
+        }, sixteenMinutesInMilliseconds);
     }
 }
 
@@ -135,7 +138,8 @@ const getTweetsWithLinks = (
                 nextCurrentMaxId = getLastTweetId(<any> tweets);
                 console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${nextCurrentMaxId}`); // TODO: COMMENT THIS, ONLY FOR DEBUG.
                 console.log(`Date last tuit: ${tweets[tweets.length - 1].created_at}`);  // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, nextCurrentMaxId);
+                // Launch getTweetsWithLinks without recursivity.
+                setTimeout(() => getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, nextCurrentMaxId), 0);
             } else {
                 debugTweetsInFile();
                 onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);

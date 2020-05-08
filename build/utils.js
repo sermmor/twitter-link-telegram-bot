@@ -9,6 +9,7 @@ exports.extractMessagesFromTweets = function (tweets) {
         truncated: tw.truncated,
         is_quote_status: tw.is_quote_status,
         hasMedia: tw.entities && tw.entities.media,
+        createdAt: tw.created_at,
     }); });
 };
 exports.getLastTweetId = function (tweets) {
