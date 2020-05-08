@@ -12,8 +12,10 @@ var telegram_data_1 = require("./telegram-data");
 var networksPath = 'build/networks.json';
 var maxNumberOfTweetsWithLinks = 2000;
 var tweetsByResquest = 200; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
+var fifteenMinutesInMilliseconds = 1000 * 60 * 15;
 var accTweets = [];
 var allResponseAcc = [];
+var nextCurrentMaxId = undefined;
 fs_1.readFile(networksPath, function (err, data) {
     if (err)
         throw err;
@@ -45,46 +47,53 @@ var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
     accTweets = [];
     allResponseAcc = [];
     var client = new twitter_1.default(userData);
-    getTuitsWithLinks(client, userTwitterData, numberOfTuits, function (tweets, error) {
-        console.log("> The bot has been called.");
-        // Send tweets to Telegram.
-        tweets.forEach(function (tw) {
+    getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks);
+};
+var handleTwitsWithLinks = function (client, userData, ctx, numberOfTuits, tweets, error) {
+    console.log("> The bot has been called.");
+    // Send tweets to Telegram (1 tweet by second).
+    tweets.forEach(function (tw) {
+        setTimeout(function () {
             ctx.reply(tw.username + " (" + tw.handle + ")\n" + tw.message + "\nhttps://twitter.com/" + tw.handle.split('@')[1] + "/status/" + tw.id
             // `${tw.username} (${tw.handle})\n${tw.message}`
             );
-        });
-        if (!error) {
-            // https://developer.twitter.com/en/docs/basics/rate-limiting
-            // https://developer.twitter.com/en/docs/tweets/timelines/faq
-            ctx.reply("Error message: [" + error[0].code + "] " + error[0].message);
-        }
+        }, 1000);
     });
+    if (error) {
+        // https://developer.twitter.com/en/docs/basics/rate-limiting
+        // https://developer.twitter.com/en/docs/tweets/timelines/faq
+        ctx.reply("Error message: [" + error[0].code + "] " + error[0].message);
+        ctx.reply("Wait until for the next 15 minutes...");
+        setTimeout(function () {
+            accTweets = [];
+            allResponseAcc = [];
+            getTweetsWithLinks(client, ctx, userData, numberOfTuits, handleTwitsWithLinks, nextCurrentMaxId);
+        }, fifteenMinutesInMilliseconds);
+    }
 };
-var getTuitsWithLinks = function (client, userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, currentMaxId) {
+var getTweetsWithLinks = function (client, ctx, userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, currentMaxId) {
     var params = prepareTwitterResquestParams(currentMaxId);
     client.get('statuses/home_timeline', params, function (error, tweets, response) {
         if (!error) {
             allResponseAcc = allResponseAcc.concat(tweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             var allTweets = utils_1.extractMessagesFromTweets(tweets);
-            accTweets = accTweets.concat(allTweets);
-            var newNumberOfTweets_1 = numberOfTweetsWithLinks - accTweets.length;
-            console.log(newNumberOfTweets_1); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-            if (newNumberOfTweets_1 > 0) {
-                var newCurrentMaxId_1 = utils_1.getLastTweetId(tweets);
-                console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + tweets[tweets.length - 1].user.id_str);
+            accTweets = accTweets.concat(utils_1.filterTweets(allTweets));
+            var newNumberOfTweets = numberOfTweetsWithLinks - accTweets.length;
+            console.log(newNumberOfTweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+            if (newNumberOfTweets > 0) {
+                nextCurrentMaxId = utils_1.getLastTweetId(tweets);
+                console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + nextCurrentMaxId);
                 ; // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                setTimeout(function () {
-                    return getTuitsWithLinks(client, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, newCurrentMaxId_1);
-                }, 1000);
+                getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, nextCurrentMaxId);
             }
             else {
                 debugTweetsInFile();
-                onTuitsWithLinksGetted(accTweets);
+                onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);
             }
         }
         else {
             debugTweetsInFile();
-            onTuitsWithLinksGetted(accTweets, error);
+            onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, error);
             console.error(error);
         }
     });

@@ -1,5 +1,6 @@
 // See example of tweet in https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
 interface TwitterMessageData {
+    created_at: string;
     full_text: string;
     id_str: string,
     is_quote_status: boolean;
@@ -16,30 +17,37 @@ export interface MessageData {
     username: string;
     handle: string;
     message: string;
+    truncated: boolean;
+    is_quote_status: boolean;
+    hasMedia: boolean;
     id: string;
+    createdAt: string;
 }
 
-const isTweetWithMedia = (tweet: TwitterMessageData) => tweet.entities && tweet.entities.media;
-const isTweetsWithURL = (tweet: TwitterMessageData) => tweet.full_text.includes('https://') || tweet.full_text.includes('http://');
-const isTweetWithNotQuoteStatus = (tweet: TwitterMessageData) => !tweet.is_quote_status;
-const isTweetTruncated = (tweet: TwitterMessageData) => tweet.truncated;
-
-const isAUrlTweetValid = (tw: TwitterMessageData) =>
-    isTweetsWithURL(tw) //&& isTweetWithNotQuoteStatus(tw) && !isTweetWithMedia(tw) && !isTweetTruncated(tw)
-
 export const extractMessagesFromTweets = (tweets: TwitterMessageData[]): MessageData[] => {
-    const messages: MessageData[] = [];
-    tweets.forEach(tw => {
-        if (isAUrlTweetValid(tw))
-            messages.push({
-                username: tw.user.name,
-                handle: `@${tw.user.screen_name}`,
-                message: tw.full_text,
-                id: tw.id_str,
-            });
-    });
-    return messages;
+    return tweets.map((tw: TwitterMessageData): MessageData => ({
+        username: tw.user.name,
+        handle: `@${tw.user.screen_name}`,
+        message: tw.full_text,
+        id: tw.id_str,
+        truncated: tw.truncated,
+        is_quote_status: tw.is_quote_status,
+        hasMedia: tw.entities && tw.entities.media,
+        createdAt: tw.created_at,
+    }));
 };
 
 export const getLastTweetId = (tweets: TwitterMessageData[]): string | undefined => 
     tweets.length > 0 ? tweets[tweets.length - 1].id_str : undefined;
+
+const isTweetWithMedia = (tweet: MessageData) => tweet.hasMedia;
+const isTweetsWithURL = (tweet: MessageData) => tweet.message.includes('https://') || tweet.message.includes('http://');
+const isTweetWithNotQuoteStatus = (tweet: MessageData) => !tweet.is_quote_status;
+const isTweetTruncated = (tweet: MessageData) => tweet.truncated;
+
+const isAUrlTweetValid = (tw: MessageData): boolean =>
+    isTweetsWithURL(tw) && isTweetWithNotQuoteStatus(tw) && !isTweetWithMedia(tw) //&& !isTweetTruncated(tw)
+
+export const filterTweets = (messages: MessageData[]): MessageData[] => (
+    messages.filter(isAUrlTweetValid)
+)

@@ -1,7 +1,7 @@
 import Twitter from 'twitter';
 import Telegraf from 'telegraf';
 import { readFile, writeFileSync } from 'fs';
-import { extractMessagesFromTweets, MessageData, getLastTweetId } from './utils';
+import { extractMessagesFromTweets, MessageData, getLastTweetId, filterTweets } from './utils';
 import { extractTwitterData, TwitterData } from './twitter-data';
 import { extractTelegramData, TelegramData } from './telegram-data';
 import { TelegrafContext } from 'telegraf/typings/context';
@@ -9,9 +9,11 @@ import { TelegrafContext } from 'telegraf/typings/context';
 const networksPath = 'build/networks.json';
 const maxNumberOfTweetsWithLinks = 2000;
 const tweetsByResquest = 200; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
+const fifteenMinutesInMilliseconds = 1000 * 60 * 15;
 
 let accTweets: MessageData[] = [];
 let allResponseAcc: any[] = [];
+let nextCurrentMaxId: string | undefined = undefined;
 
 readFile(networksPath, (err, data) => {
     if (err) throw err;
@@ -63,29 +65,59 @@ const sendTuitWithLinksToTelegram = (
     allResponseAcc = [];
     
     const client = new Twitter(userData);
-    getTuitsWithLinks(client, userTwitterData, numberOfTuits, (tweets: MessageData[], error?: any) => {
-        console.log("> The bot has been called.");
-        // Send tweets to Telegram.
-        tweets.forEach(tw => {
+    getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks);
+};
+
+const handleTwitsWithLinks = (
+    client: Twitter,
+    userData: any,
+    ctx: TelegrafContext,
+    numberOfTuits: number,
+    tweets: MessageData[],
+    error?: any
+) => {
+    console.log("> The bot has been called.");
+    // Send tweets to Telegram (1 tweet by second).
+    tweets.forEach((tw: MessageData, index: number) => {
+        setTimeout(() => {
             ctx.reply(
                 `${tw.username} (${tw.handle})\n${tw.message}\nhttps://twitter.com/${tw.handle.split('@')[1]}/status/${tw.id}`
                 // `${tw.username} (${tw.handle})\n${tw.message}`
             );
-        });
-        if (!error) {
-            // https://developer.twitter.com/en/docs/basics/rate-limiting
-            // https://developer.twitter.com/en/docs/tweets/timelines/faq
-            ctx.reply(`Error message: [${error[0].code}] ${error[0].message}`);
-        }
+        }, index * 1000);
     });
+    if (error) {
+        // https://developer.twitter.com/en/docs/basics/rate-limiting
+        // https://developer.twitter.com/en/docs/tweets/timelines/faq
+        ctx.reply(`Error message: [${error[0].code}] ${error[0].message}`);
+        ctx.reply(`Wait until for the next 15 minutes...`);
+        setTimeout(() => {
+            accTweets = [];
+            allResponseAcc = [];
+            getTweetsWithLinks(
+                client,
+                ctx,
+                userData,
+                numberOfTuits,
+                handleTwitsWithLinks,
+                nextCurrentMaxId
+            );
+        }, fifteenMinutesInMilliseconds);
+    }
 }
 
-
-const getTuitsWithLinks = (
+const getTweetsWithLinks = (
     client: Twitter,
+    ctx: TelegrafContext,
     userData: TwitterData,
     numberOfTweetsWithLinks: number,
-    onTuitsWithLinksGetted: ((tweets: MessageData[], error?: any) => void),
+    onTuitsWithLinksGetted: ((
+        client: Twitter,
+        userData: any,
+        ctx: TelegrafContext,
+        numberOfTuits: number,
+        tweets: MessageData[],
+        error?: any) => void),
     currentMaxId?: string
 ) => {
     const params: Twitter.RequestParams = prepareTwitterResquestParams(currentMaxId);
@@ -93,25 +125,24 @@ const getTuitsWithLinks = (
     client.get('statuses/home_timeline', params, function(error, tweets, response) {
         if (!error) {
             allResponseAcc = allResponseAcc.concat(tweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-            const allTweets: MessageData[] = extractMessagesFromTweets(<any> tweets);
+            let allTweets: MessageData[] = extractMessagesFromTweets(<any> tweets);
+            allTweets = filterTweets(allTweets);
             accTweets = accTweets.concat(allTweets);
-            const newNumberOfTweets = numberOfTweetsWithLinks - accTweets.length;
+            const newNumberOfTweets = numberOfTweetsWithLinks - allTweets.length;
 
             console.log(newNumberOfTweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             if (newNumberOfTweets > 0) {
-                const newCurrentMaxId = getLastTweetId(<any> tweets);
-                console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${tweets[tweets.length - 1].user.id_str}`); ; // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                setTimeout(() => 
-                    getTuitsWithLinks(client, userData, newNumberOfTweets, onTuitsWithLinksGetted, newCurrentMaxId),
-                    1000,
-                );
+                nextCurrentMaxId = getLastTweetId(<any> tweets);
+                console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${nextCurrentMaxId}`); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                console.log(tweets[tweets.length - 1].created_at);  // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, nextCurrentMaxId);
             } else {
                 debugTweetsInFile();
-                onTuitsWithLinksGetted(accTweets);
+                onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);
             }
         } else {
             debugTweetsInFile();
-            onTuitsWithLinksGetted(accTweets, error);
+            onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, error);
             console.error(error);
         }
     });
