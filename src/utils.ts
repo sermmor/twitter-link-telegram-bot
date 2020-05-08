@@ -25,7 +25,7 @@ const isTweetWithNotQuoteStatus = (tweet: TwitterMessageData) => !tweet.is_quote
 const isTweetTruncated = (tweet: TwitterMessageData) => tweet.truncated;
 
 const isAUrlTweetValid = (tw: TwitterMessageData) =>
-    isTweetsWithURL(tw) //&& !isTweetWithMedia(tw) && isTweetWithNotQuoteStatus(tw) && !isTweetTruncated(tw)
+    isTweetsWithURL(tw) && !isTweetWithMedia(tw) && isTweetWithNotQuoteStatus(tw) //&& !isTweetTruncated(tw)
 
 export const extractMessagesFromTweets = (tweets: TwitterMessageData[]): MessageData[] => {
     const messages: MessageData[] = [];

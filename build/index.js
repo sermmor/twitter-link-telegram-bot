@@ -10,6 +10,7 @@ var utils_1 = require("./utils");
 var twitter_data_1 = require("./twitter-data");
 var telegram_data_1 = require("./telegram-data");
 var networksPath = 'build/networks.json';
+var maxNumberOfTweetsWithLinks = 2000;
 var tweetsByResquest = 50; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
 var accTweets = [];
 var allResponseAcc = [];
@@ -19,25 +20,44 @@ fs_1.readFile(networksPath, function (err, data) {
     var userData = JSON.parse(data);
     var telegramBotData = telegram_data_1.extractTelegramData(userData);
     var bot = new telegraf_1.default(telegramBotData.telegram_bot_token); // Also you can use process.env.BOT_TOKEN here.
-    bot.command(telegramBotData.bot_tuit_command, function (_a) {
-        var reply = _a.reply;
-        var userTwitterData = twitter_data_1.extractTwitterData(userData);
-        var telegramNumberOfTweetsWithLinks = 10; // TODO: Comands with 10, 20, 30,...
-        accTweets = [];
-        allResponseAcc = [];
-        getTuitsWithLinks(userTwitterData, telegramNumberOfTweetsWithLinks, function (tweets) {
-            // Send tweets to Telegram.
-            console.log("> The bot has been called.");
-            tweets.forEach(function (tw) {
-                reply(tw.username + " (" + tw.handle + ")\n" + tw.message + "\nhttps://twitter.com/" + tw.handle.split('@')[1] + "/status/" + tw.id
-                // `${tw.username} (${tw.handle})\n${tw.message}`
-                );
-            });
+    // bot.command(`${telegramBotData.bot_tuit_command}`, (ctx: TelegrafContext) => {
+    //     const telegramNumberOfTweetsWithLinks = 10; // TODO: Comands with 10, 20, 30,...
+    //     sendTuitWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
+    // });
+    var numberOfTweetsWithLinks = buildNumberOfTweetsWithLinks(maxNumberOfTweetsWithLinks);
+    buildBotCommands(userData, bot, telegramBotData, numberOfTweetsWithLinks);
+    bot.launch();
+    console.log("> The bot is ready.");
+});
+var buildNumberOfTweetsWithLinks = function (maxSize) {
+    var increment = 10;
+    var numberOfTweetsWithLinks = [];
+    for (var i = increment; i <= maxSize; i += increment) {
+        numberOfTweetsWithLinks.push(i);
+    }
+    return numberOfTweetsWithLinks;
+};
+var buildBotCommands = function (userData, bot, telegramBotData, numberOfTweetsWithLinks) {
+    numberOfTweetsWithLinks.forEach(function (telegramNumberOfTweetsWithLinks) {
+        bot.command("" + telegramBotData.bot_tuit_command + telegramNumberOfTweetsWithLinks, function (ctx) {
+            sendTuitWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
         });
     });
-    bot.launch();
-    console.log("> The bot is on.");
-});
+};
+var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
+    var userTwitterData = twitter_data_1.extractTwitterData(userData);
+    accTweets = [];
+    allResponseAcc = [];
+    getTuitsWithLinks(userTwitterData, numberOfTuits, function (tweets) {
+        // Send tweets to Telegram.
+        console.log("> The bot has been called.");
+        tweets.forEach(function (tw) {
+            ctx.reply(tw.username + " (" + tw.handle + ")\n" + tw.message + "\nhttps://twitter.com/" + tw.handle.split('@')[1] + "/status/" + tw.id
+            // `${tw.username} (${tw.handle})\n${tw.message}`
+            );
+        });
+    });
+};
 var getTuitsWithLinks = function (userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, currentMaxId) {
     var client = new twitter_1.default(userData);
     var params = prepareTwitterResquestParams(currentMaxId);

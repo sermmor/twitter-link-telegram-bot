@@ -7,6 +7,7 @@ import { extractTelegramData, TelegramData } from './telegram-data';
 import { TelegrafContext } from 'telegraf/typings/context';
 
 const networksPath = 'build/networks.json';
+const maxNumberOfTweetsWithLinks = 2000;
 const tweetsByResquest = 50; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
 
 let accTweets: MessageData[] = [];
@@ -19,27 +20,59 @@ readFile(networksPath, (err, data) => {
     const telegramBotData: TelegramData = extractTelegramData(userData);
     const bot = new Telegraf(telegramBotData.telegram_bot_token) // Also you can use process.env.BOT_TOKEN here.
 
-    bot.command(telegramBotData.bot_tuit_command, (ctx: TelegrafContext) => {
-        const userTwitterData = extractTwitterData(userData);
-        const telegramNumberOfTweetsWithLinks = 10; // TODO: Comands with 10, 20, 30,...
-    
-        accTweets = [];
-        allResponseAcc = [];
-        getTuitsWithLinks(userTwitterData, telegramNumberOfTweetsWithLinks, (tweets: MessageData[]) => {
-            // Send tweets to Telegram.
-            console.log("> The bot has been called.");
-            tweets.forEach(tw => {
-                ctx.reply(
-                    `${tw.username} (${tw.handle})\n${tw.message}\nhttps://twitter.com/${tw.handle.split('@')[1]}/status/${tw.id}`
-                    // `${tw.username} (${tw.handle})\n${tw.message}`
-                );
-            });
-        });
-    });
+    const numberOfTweetsWithLinks = buildNumberOfTweetsWithLinks(maxNumberOfTweetsWithLinks);
+    buildBotCommands(userData, bot, telegramBotData, numberOfTweetsWithLinks);
     bot.launch();
 
-    console.log("> The bot is on.");
+    console.log("> The bot is ready.");
 });
+
+const buildNumberOfTweetsWithLinks = (maxSize: number): number[] => {
+    const increment = 10;
+    const numberOfTweetsWithLinks: number[] = [];
+    for (let i = increment; i <= maxSize; i += increment) {
+        numberOfTweetsWithLinks.push(i);
+    }
+    return numberOfTweetsWithLinks;
+}
+
+const buildBotCommands = (
+    userData: any,
+    bot: Telegraf<TelegrafContext>,
+    telegramBotData: TelegramData,
+    numberOfTweetsWithLinks: number[]
+) => {
+    numberOfTweetsWithLinks.forEach(telegramNumberOfTweetsWithLinks => {
+        bot.command(
+            `${telegramBotData.bot_tuit_command}${telegramNumberOfTweetsWithLinks}`,
+            (ctx: TelegrafContext) => {
+                sendTuitWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
+            }
+        );
+    })
+}
+
+const sendTuitWithLinksToTelegram = (
+    userData: any,
+    ctx: TelegrafContext,
+    numberOfTuits: number
+) => {
+    const userTwitterData = extractTwitterData(userData);
+    
+    accTweets = [];
+    allResponseAcc = [];
+    getTuitsWithLinks(userTwitterData, numberOfTuits, (tweets: MessageData[]) => {
+        // Send tweets to Telegram.
+        console.log("> The bot has been called.");
+        tweets.forEach(tw => {
+            ctx.reply(
+                `${tw.username} (${tw.handle})\n${tw.message}\nhttps://twitter.com/${tw.handle.split('@')[1]}/status/${tw.id}`
+                // `${tw.username} (${tw.handle})\n${tw.message}`
+            );
+        });
+    });
+}
+
 
 const getTuitsWithLinks = (
     userData: TwitterData,
