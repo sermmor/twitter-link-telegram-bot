@@ -47,15 +47,13 @@ var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
     var client = new twitter_1.default(userData);
     getTuitsWithLinks(client, userTwitterData, numberOfTuits, function (tweets, error) {
         console.log("> The bot has been called.");
+        // Send tweets to Telegram.
+        tweets.forEach(function (tw) {
+            ctx.reply(tw.username + " (" + tw.handle + ")\n" + tw.message + "\nhttps://twitter.com/" + tw.handle.split('@')[1] + "/status/" + tw.id
+            // `${tw.username} (${tw.handle})\n${tw.message}`
+            );
+        });
         if (!error) {
-            // Send tweets to Telegram.
-            tweets.forEach(function (tw) {
-                ctx.reply(tw.username + " (" + tw.handle + ")\n" + tw.message + "\nhttps://twitter.com/" + tw.handle.split('@')[1] + "/status/" + tw.id
-                // `${tw.username} (${tw.handle})\n${tw.message}`
-                );
-            });
-        }
-        else {
             // https://developer.twitter.com/en/docs/basics/rate-limiting
             // https://developer.twitter.com/en/docs/tweets/timelines/faq
             ctx.reply("Error message: [" + error[0].code + "] " + error[0].message);
@@ -66,14 +64,15 @@ var getTuitsWithLinks = function (client, userData, numberOfTweetsWithLinks, onT
     var params = prepareTwitterResquestParams(currentMaxId);
     client.get('statuses/home_timeline', params, function (error, tweets, response) {
         if (!error) {
-            // allResponseAcc = allResponseAcc.concat(tweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+            allResponseAcc = allResponseAcc.concat(tweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             var allTweets = utils_1.extractMessagesFromTweets(tweets);
             accTweets = accTweets.concat(allTweets);
             var newNumberOfTweets_1 = numberOfTweetsWithLinks - accTweets.length;
-            // console.log(newNumberOfTweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+            console.log(newNumberOfTweets_1); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             if (newNumberOfTweets_1 > 0) {
                 var newCurrentMaxId_1 = utils_1.getLastTweetId(tweets);
-                // console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${tweets[tweets.length - 1].user.screen_name.id_str}`); ; // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + tweets[tweets.length - 1].user.id_str);
+                ; // TODO: COMMENT THIS, ONLY FOR DEBUG.
                 setTimeout(function () {
                     return getTuitsWithLinks(client, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, newCurrentMaxId_1);
                 }, 1000);
@@ -107,5 +106,5 @@ var debugTweetsInFile = function () {
     // writeFileSync('tuits.json', strAllTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
     // const allTuits: string = JSON.stringify(allResponseAcc, null, 2); // TODO: COMMENT THIS, ONLY FOR DEBUG.
     // writeFileSync('tuits.json', allTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    // console.log(`allTuits: ${allResponseAcc.length} vs messages: ${accTweets.length}`);
+    console.log("allTuits: " + allResponseAcc.length + " vs messages: " + accTweets.length);
 };

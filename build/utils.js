@@ -5,8 +5,8 @@ var isTweetsWithURL = function (tweet) { return tweet.full_text.includes('https:
 var isTweetWithNotQuoteStatus = function (tweet) { return !tweet.is_quote_status; };
 var isTweetTruncated = function (tweet) { return tweet.truncated; };
 var isAUrlTweetValid = function (tw) {
-    return isTweetsWithURL(tw) && !isTweetWithMedia(tw) && isTweetWithNotQuoteStatus(tw);
-}; //&& !isTweetTruncated(tw)
+    return isTweetsWithURL(tw);
+}; //&& isTweetWithNotQuoteStatus(tw) && !isTweetWithMedia(tw) && !isTweetTruncated(tw)
 exports.extractMessagesFromTweets = function (tweets) {
     var messages = [];
     tweets.forEach(function (tw) {
