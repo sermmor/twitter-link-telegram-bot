@@ -134,7 +134,7 @@ const getTweetsWithLinks = (
             if (newNumberOfTweets > 0) {
                 nextCurrentMaxId = getLastTweetId(<any> tweets);
                 console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${nextCurrentMaxId}`); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                console.log(tweets[tweets.length - 1].created_at);  // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                console.log(`Date last tuit: ${tweets[tweets.length - 1].created_at}`);  // TODO: COMMENT THIS, ONLY FOR DEBUG.
                 getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, nextCurrentMaxId);
             } else {
                 debugTweetsInFile();
