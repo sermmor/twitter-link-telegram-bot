@@ -41,5 +41,5 @@ export const extractMessagesFromTweets = (tweets: TwitterMessageData[]): Message
     return messages;
 };
 
-export const getLastTweetId = (tweets: MessageData[]): string | undefined => 
-    tweets.length > 0 ? tweets[tweets.length - 1].id : undefined;
+export const getLastTweetId = (tweets: TwitterMessageData[]): string | undefined => 
+    tweets.length > 0 ? tweets[tweets.length - 1].id_str : undefined;

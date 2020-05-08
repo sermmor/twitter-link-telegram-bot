@@ -11,7 +11,7 @@ var twitter_data_1 = require("./twitter-data");
 var telegram_data_1 = require("./telegram-data");
 var networksPath = 'build/networks.json';
 var maxNumberOfTweetsWithLinks = 2000;
-var tweetsByResquest = 50; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
+var tweetsByResquest = 200; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
 var accTweets = [];
 var allResponseAcc = [];
 fs_1.readFile(networksPath, function (err, data) {
@@ -20,10 +20,6 @@ fs_1.readFile(networksPath, function (err, data) {
     var userData = JSON.parse(data);
     var telegramBotData = telegram_data_1.extractTelegramData(userData);
     var bot = new telegraf_1.default(telegramBotData.telegram_bot_token); // Also you can use process.env.BOT_TOKEN here.
-    // bot.command(`${telegramBotData.bot_tuit_command}`, (ctx: TelegrafContext) => {
-    //     const telegramNumberOfTweetsWithLinks = 10; // TODO: Comands with 10, 20, 30,...
-    //     sendTuitWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
-    // });
     var numberOfTweetsWithLinks = buildNumberOfTweetsWithLinks(maxNumberOfTweetsWithLinks);
     buildBotCommands(userData, bot, telegramBotData, numberOfTweetsWithLinks);
     bot.launch();
@@ -48,14 +44,20 @@ var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
     var userTwitterData = twitter_data_1.extractTwitterData(userData);
     accTweets = [];
     allResponseAcc = [];
-    getTuitsWithLinks(userTwitterData, numberOfTuits, function (tweets) {
-        // Send tweets to Telegram.
+    getTuitsWithLinks(userTwitterData, numberOfTuits, function (tweets, error) {
         console.log("> The bot has been called.");
-        tweets.forEach(function (tw) {
-            ctx.reply(tw.username + " (" + tw.handle + ")\n" + tw.message + "\nhttps://twitter.com/" + tw.handle.split('@')[1] + "/status/" + tw.id
-            // `${tw.username} (${tw.handle})\n${tw.message}`
-            );
-        });
+        if (!error) {
+            // Send tweets to Telegram.
+            tweets.forEach(function (tw) {
+                ctx.reply(tw.username + " (" + tw.handle + ")\n" + tw.message + "\nhttps://twitter.com/" + tw.handle.split('@')[1] + "/status/" + tw.id
+                // `${tw.username} (${tw.handle})\n${tw.message}`
+                );
+            });
+        }
+        else {
+            // https://developer.twitter.com/en/docs/basics/rate-limiting If a method allows for 15 requests per rate limit window, then it allows 15 requests per window per access token.
+            ctx.reply("Error message: [" + error.code + "] " + error.message);
+        }
     });
 };
 var getTuitsWithLinks = function (userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, currentMaxId) {
@@ -69,13 +71,20 @@ var getTuitsWithLinks = function (userData, numberOfTweetsWithLinks, onTuitsWith
             var newNumberOfTweets = numberOfTweetsWithLinks - accTweets.length;
             console.log(newNumberOfTweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             if (newNumberOfTweets > 0) {
-                var newCurrentMaxId = utils_1.getLastTweetId(accTweets);
+                var newCurrentMaxId = utils_1.getLastTweetId(tweets);
+                console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + tweets[tweets.length - 1].user.screen_name.id_str);
+                ; // TODO: COMMENT THIS, ONLY FOR DEBUG.
                 getTuitsWithLinks(userData, newNumberOfTweets, onTuitsWithLinksGetted, newCurrentMaxId);
             }
             else {
                 debugTweetsInFile();
                 onTuitsWithLinksGetted(accTweets);
             }
+        }
+        else {
+            debugTweetsInFile();
+            onTuitsWithLinksGetted(accTweets, error);
+            console.error(error);
         }
     });
 };
