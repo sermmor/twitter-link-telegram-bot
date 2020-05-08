@@ -20,8 +20,6 @@ exports.extractMessagesFromTweets = function (tweets) {
     });
     return messages;
 };
-// export const getLastTweetId = (tweets: MessageData[]): string | undefined => 
-//     tweets.length > 0 ? tweets[tweets.length - 1].id : undefined;
 exports.getLastTweetId = function (tweets) {
     return tweets.length > 0 ? tweets[tweets.length - 1].id_str : undefined;
 };

@@ -72,8 +72,9 @@ const sendTuitWithLinksToTelegram = (
                 );
             });
         } else {
-            // https://developer.twitter.com/en/docs/basics/rate-limiting If a method allows for 15 requests per rate limit window, then it allows 15 requests per window per access token.
-            ctx.reply(`Error message: [${error.code}] ${error.message}`);
+            // https://developer.twitter.com/en/docs/basics/rate-limiting
+            // https://developer.twitter.com/en/docs/tweets/timelines/faq
+            ctx.reply(`Error message: [${error[0].code}] ${error[0].message}`);
         }
     });
 }
