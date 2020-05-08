@@ -1,26 +1,25 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var isTweetWithMedia = function (tweet) { return tweet.entities && tweet.entities.media; };
+var isTweetsWithURL = function (tweet) { return tweet.full_text.includes('https://') || tweet.full_text.includes('http://'); };
+var isTweetWithNotQuoteStatus = function (tweet) { return !tweet.is_quote_status; };
+var isTweetTruncated = function (tweet) { return tweet.truncated; };
+var isAUrlTweetValid = function (tw) {
+    return isTweetsWithURL(tw);
+}; //&& !isTweetWithMedia(tw) && isTweetWithNotQuoteStatus(tw) && !isTweetTruncated(tw)
 exports.extractMessagesFromTweets = function (tweets) {
     var messages = [];
     tweets.forEach(function (tw) {
-        messages.push({
-            username: tw.user.name,
-            handle: "@" + tw.user.screen_name,
-            message: tw.text,
-            id: tw.id_str,
-            isQuoteStatus: tw.is_quote_status,
-        });
+        if (isAUrlTweetValid(tw))
+            messages.push({
+                username: tw.user.name,
+                handle: "@" + tw.user.screen_name,
+                message: tw.full_text,
+                id: tw.id_str,
+            });
     });
     return messages;
 };
-exports.filterNotQuoteStatus = function (tweets) {
-    return tweets.filter(function (msg) { return !msg.isQuoteStatus; });
-};
-exports.filterTweetsWithURL = function (tweets) {
-    return exports.filterNotQuoteStatus(tweets)
-        .filter(function (msg) { return msg.message.includes('https://') || msg.message.includes('http://'); });
-};
-// tweets.filter(msg => msg.message.includes('https://') || msg.message.includes('http://'));
 exports.getLastTweetId = function (tweets) {
     return tweets.length > 0 ? tweets[tweets.length - 1].id : undefined;
 };
