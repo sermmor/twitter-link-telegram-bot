@@ -61,7 +61,9 @@ const sendTuitWithLinksToTelegram = (
     
     accTweets = [];
     allResponseAcc = [];
-    getTuitsWithLinks(userTwitterData, numberOfTuits, (tweets: MessageData[], error?: any) => {
+    
+    const client = new Twitter(userData);
+    getTuitsWithLinks(client, userTwitterData, numberOfTuits, (tweets: MessageData[], error?: any) => {
         console.log("> The bot has been called.");
         if (!error) {
             // Send tweets to Telegram.
@@ -81,12 +83,12 @@ const sendTuitWithLinksToTelegram = (
 
 
 const getTuitsWithLinks = (
+    client: Twitter,
     userData: TwitterData,
     numberOfTweetsWithLinks: number,
     onTuitsWithLinksGetted: ((tweets: MessageData[], error?: any) => void),
     currentMaxId?: string
 ) => {
-    const client = new Twitter(userData);
     const params: Twitter.RequestParams = prepareTwitterResquestParams(currentMaxId);
 
     client.get('statuses/home_timeline', params, function(error, tweets, response) {
@@ -100,7 +102,10 @@ const getTuitsWithLinks = (
             if (newNumberOfTweets > 0) {
                 const newCurrentMaxId = getLastTweetId(<any> tweets);
                 // console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${tweets[tweets.length - 1].user.screen_name.id_str}`); ; // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                getTuitsWithLinks(userData, newNumberOfTweets, onTuitsWithLinksGetted, newCurrentMaxId);
+                setTimeout(() => 
+                    getTuitsWithLinks(client, userData, newNumberOfTweets, onTuitsWithLinksGetted, newCurrentMaxId),
+                    1000,
+                );
             } else {
                 debugTweetsInFile();
                 onTuitsWithLinksGetted(accTweets);

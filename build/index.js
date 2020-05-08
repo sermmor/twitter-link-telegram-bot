@@ -44,7 +44,8 @@ var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
     var userTwitterData = twitter_data_1.extractTwitterData(userData);
     accTweets = [];
     allResponseAcc = [];
-    getTuitsWithLinks(userTwitterData, numberOfTuits, function (tweets, error) {
+    var client = new twitter_1.default(userData);
+    getTuitsWithLinks(client, userTwitterData, numberOfTuits, function (tweets, error) {
         console.log("> The bot has been called.");
         if (!error) {
             // Send tweets to Telegram.
@@ -61,20 +62,21 @@ var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
         }
     });
 };
-var getTuitsWithLinks = function (userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, currentMaxId) {
-    var client = new twitter_1.default(userData);
+var getTuitsWithLinks = function (client, userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, currentMaxId) {
     var params = prepareTwitterResquestParams(currentMaxId);
     client.get('statuses/home_timeline', params, function (error, tweets, response) {
         if (!error) {
             // allResponseAcc = allResponseAcc.concat(tweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             var allTweets = utils_1.extractMessagesFromTweets(tweets);
             accTweets = accTweets.concat(allTweets);
-            var newNumberOfTweets = numberOfTweetsWithLinks - accTweets.length;
+            var newNumberOfTweets_1 = numberOfTweetsWithLinks - accTweets.length;
             // console.log(newNumberOfTweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-            if (newNumberOfTweets > 0) {
-                var newCurrentMaxId = utils_1.getLastTweetId(tweets);
+            if (newNumberOfTweets_1 > 0) {
+                var newCurrentMaxId_1 = utils_1.getLastTweetId(tweets);
                 // console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${tweets[tweets.length - 1].user.screen_name.id_str}`); ; // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                getTuitsWithLinks(userData, newNumberOfTweets, onTuitsWithLinksGetted, newCurrentMaxId);
+                setTimeout(function () {
+                    return getTuitsWithLinks(client, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, newCurrentMaxId_1);
+                }, 1000);
             }
             else {
                 debugTweetsInFile();
