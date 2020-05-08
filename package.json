@@ -4,7 +4,7 @@
   "description": "Telegram bot in NodeJS for get n number of links of a twitter profile TL.",
   "main": "index.js",
   "scripts": {
-    "start": "npx tsc && node build/index.js"
+    "start": "npx tsc && cpy networks.json build && node build/index.js"
   },
   "repository": {
     "type": "git",
@@ -19,6 +19,8 @@
   "homepage": "https://github.com/sermmor/twitter-link-telegram-bot#readme",
   "devDependencies": {
     "@types/node": "^13.13.5",
+    "@types/twitter": "^1.7.0",
+    "cpy-cli": "^3.1.1",
     "typescript": "^3.8.3"
   },
   "dependencies": {
