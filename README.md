@@ -36,4 +36,4 @@ For list ID you can see the [twitter documentation about list](https://developer
 
 So, the final folder structure will be the following:
 
-![PathImage](https://raw.githubusercontent.com/sermmor/twitter-link-telegram-bot/master/images/finalPathScript.png)
+![finalPathScript](https://raw.githubusercontent.com/sermmor/twitter-link-telegram-bot/master/images/finalPathScript.png)
