@@ -13,6 +13,14 @@ interface TwitterMessageData {
     [key: string]: any;
 }
 
+export interface ResquestParams {
+    count: number,
+    exclude_replies: boolean,
+    tweet_mode: string,
+    max_id?: string,
+    list_id?: string,
+}
+
 export interface MessageData {
     username: string;
     handle: string;

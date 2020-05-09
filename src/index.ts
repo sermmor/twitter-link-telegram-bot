@@ -1,7 +1,7 @@
 import Twitter from 'twitter';
 import Telegraf from 'telegraf';
 import { readFile, writeFileSync } from 'fs';
-import { extractMessagesFromTweets, MessageData, getLastTweetId, filterTweets } from './utils';
+import { extractMessagesFromTweets, MessageData, getLastTweetId, filterTweets, ResquestParams } from './utils';
 import { extractTwitterData, TwitterData } from './twitter-data';
 import { extractTelegramData, TelegramData } from './telegram-data';
 import { TelegrafContext } from 'telegraf/typings/context';
@@ -14,11 +14,12 @@ const pathFinishedVideo = 'build/finished.mp4';
 const pathStartedVideo = 'build/start.mp4';
 const maxNumberOfTweetsWithLinks = 1000;
 const tweetsByResquest = 200; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
-const sixteenMinutesInMilliseconds = 1000 * 60 * 16;
+const sixteenMinutesInMilliseconds = 960000; // 1000 milliseconds (1 second) * 60 seconds (1 minute) * 16 minutes;
 
 let accTweets: MessageData[] = [];
 let numberOfResponses: number = 0;
 let nextCurrentMaxId: string | undefined = undefined;
+let currentListId: string | undefined = undefined;
 
 readFile(networksPath, (err, data) => {
     if (err) throw err;
@@ -52,17 +53,48 @@ const buildBotCommands = (
     telegramBotData: TelegramData,
     numberOfTweetsWithLinks: number[]
 ) => {
+    // TL commands.
     numberOfTweetsWithLinks.forEach(telegramNumberOfTweetsWithLinks => {
         bot.command(
             `${telegramBotData.bot_tuit_command}${telegramNumberOfTweetsWithLinks}`,
             (ctx: TelegrafContext) => {
-                sendTuitWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
+                sendTuitTLWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
             }
         );
-    })
+    });
+
+    // Lists commands.
+    telegramBotData.user_lists.forEach(userMemberList => {
+        numberOfTweetsWithLinks.forEach(telegramNumberOfTweetsWithLinks => {
+            bot.command(
+                `${userMemberList.bot_list_command}${telegramNumberOfTweetsWithLinks}`,
+                (ctx: TelegrafContext) => {
+                    sendTuitListWithLinksToTelegram(userData, ctx, userMemberList.list_id, telegramNumberOfTweetsWithLinks);
+                }
+            );
+        });
+    });
 }
 
-const sendTuitWithLinksToTelegram = (
+// https://developer.twitter.com/en/docs/accounts-and-users/create-manage-lists/api-reference/get-lists-statuses
+const sendTuitListWithLinksToTelegram = (
+    userData: any,
+    ctx: TelegrafContext,
+    list_id: string,
+    numberOfTuits: number
+) => {
+    const userTwitterData = extractTwitterData(userData);
+    
+    accTweets = [];
+    numberOfResponses = 0;
+    nextCurrentMaxId = undefined;
+    currentListId = list_id;
+    
+    const client = new Twitter(userData);
+    getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks, twitterListEndpoint);
+};
+
+const sendTuitTLWithLinksToTelegram = (
     userData: any,
     ctx: TelegrafContext,
     numberOfTuits: number
@@ -71,6 +103,8 @@ const sendTuitWithLinksToTelegram = (
     
     accTweets = [];
     numberOfResponses = 0;
+    nextCurrentMaxId = undefined;
+    currentListId = undefined;
     
     const client = new Twitter(userData);
     getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks, twitterTLEndpoint);
@@ -177,17 +211,20 @@ const getTweetsWithLinks = (
 };
 
 // We are using the modern twitter API https://developer.twitter.com/en/docs/tweets/tweet-updates
-const prepareTwitterResquestParams = (twitterEndpoint: string, currentMaxId?: string) => {
-    let resquestParams = {
+const prepareTwitterResquestParams = (twitterEndpoint: string, currentMaxId?: string): ResquestParams => {
+    let resquestParams: ResquestParams = {
         count: tweetsByResquest,
         exclude_replies: true,
         tweet_mode: 'extended',
     };
 
     if (twitterEndpoint === twitterTLEndpoint) {
-        // ! CASE TL.
+        // CASE TL (not delete because if I want new params for Timeline Endpoint).
     } else if (twitterEndpoint == twitterListEndpoint) {
-        // ! CASE LIST.
+        resquestParams = {
+            ...resquestParams,
+            list_id: currentListId,
+        }
     }
 
     return currentMaxId ? { ...resquestParams, max_id: currentMaxId, } : resquestParams;

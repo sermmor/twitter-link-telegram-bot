@@ -27,10 +27,11 @@ var pathFinishedVideo = 'build/finished.mp4';
 var pathStartedVideo = 'build/start.mp4';
 var maxNumberOfTweetsWithLinks = 1000;
 var tweetsByResquest = 200; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
-var sixteenMinutesInMilliseconds = 1000 * 60 * 16;
+var sixteenMinutesInMilliseconds = 960000; // 1000 milliseconds (1 second) * 60 seconds (1 minute) * 16 minutes;
 var accTweets = [];
 var numberOfResponses = 0;
 var nextCurrentMaxId = undefined;
+var currentListId = undefined;
 fs_1.readFile(networksPath, function (err, data) {
     if (err)
         throw err;
@@ -54,16 +55,37 @@ var buildNumberOfTweetsWithLinks = function (maxSize) {
     return numberOfTweetsWithLinks;
 };
 var buildBotCommands = function (userData, bot, telegramBotData, numberOfTweetsWithLinks) {
+    // TL commands.
     numberOfTweetsWithLinks.forEach(function (telegramNumberOfTweetsWithLinks) {
         bot.command("" + telegramBotData.bot_tuit_command + telegramNumberOfTweetsWithLinks, function (ctx) {
-            sendTuitWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
+            sendTuitTLWithLinksToTelegram(userData, ctx, telegramNumberOfTweetsWithLinks);
+        });
+    });
+    // Lists commands.
+    telegramBotData.user_lists.forEach(function (userMemberList) {
+        numberOfTweetsWithLinks.forEach(function (telegramNumberOfTweetsWithLinks) {
+            bot.command("" + userMemberList.bot_list_command + telegramNumberOfTweetsWithLinks, function (ctx) {
+                sendTuitListWithLinksToTelegram(userData, ctx, userMemberList.list_id, telegramNumberOfTweetsWithLinks);
+            });
         });
     });
 };
-var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
+// https://developer.twitter.com/en/docs/accounts-and-users/create-manage-lists/api-reference/get-lists-statuses
+var sendTuitListWithLinksToTelegram = function (userData, ctx, list_id, numberOfTuits) {
     var userTwitterData = twitter_data_1.extractTwitterData(userData);
     accTweets = [];
     numberOfResponses = 0;
+    nextCurrentMaxId = undefined;
+    currentListId = list_id;
+    var client = new twitter_1.default(userData);
+    getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks, twitterListEndpoint);
+};
+var sendTuitTLWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
+    var userTwitterData = twitter_data_1.extractTwitterData(userData);
+    accTweets = [];
+    numberOfResponses = 0;
+    nextCurrentMaxId = undefined;
+    currentListId = undefined;
     var client = new twitter_1.default(userData);
     getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks, twitterTLEndpoint);
 };
@@ -143,10 +165,10 @@ var prepareTwitterResquestParams = function (twitterEndpoint, currentMaxId) {
         tweet_mode: 'extended',
     };
     if (twitterEndpoint === twitterTLEndpoint) {
-        // ! CASE TL.
+        // CASE TL (not delete because if I want new params for Timeline Endpoint).
     }
     else if (twitterEndpoint == twitterListEndpoint) {
-        // ! CASE LIST.
+        resquestParams = __assign(__assign({}, resquestParams), { list_id: currentListId });
     }
     return currentMaxId ? __assign(__assign({}, resquestParams), { max_id: currentMaxId }) : resquestParams;
 };
