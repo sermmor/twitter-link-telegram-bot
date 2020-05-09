@@ -1,11 +1,11 @@
-# twitter-link-telegram-bot
+# Twitter Link To Telegram Bot
 Telegram bot in NodeJS for get n number of links of a twitter profile TL.
 
 # Configuration
 In root folder, create a video folder and put two videos: finished.mp4 and start.mp4.
 
 In root folder, create a file `networks.json` and put the following content for your data:
-```json
+```javascript
 {
     "consumer_key": "",
     "consumer_secret": "",
