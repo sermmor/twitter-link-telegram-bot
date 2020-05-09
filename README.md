@@ -1,5 +1,5 @@
 # Twitter Link To Telegram Bot
-Telegram bot in NodeJS for get n number of links of a twitter profile TL.
+Telegram bot in NodeJS for get n number of links of a twitter profile timeline or twitter lists.
 
 # Install
 For install the bot, use the following console command:
