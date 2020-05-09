@@ -22,7 +22,7 @@ In root folder, create a file `networks.json` and put the following content for 
             "list_id": "",
             "bot_list_command": ""
         },
-        ...
+        // ...
         {
             "list_id": "",
             "bot_list_command": ""
