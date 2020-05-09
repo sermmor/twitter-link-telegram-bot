@@ -49,13 +49,13 @@ So, the final folder structure will be the following:
 
 ![finalPathScript](https://raw.githubusercontent.com/sermmor/twitter-link-telegram-bot/master/images/finalPathScript.png)
 
-# Start the bot.
+# Start the bot
 For start the bot, you have to to launch the following console command:
 ```shell
 $ npm start
 ```
 
-# Use the bot.
+# Use the bot
 For start the bot send `\start`.
 
 For get links from tweets of a TL, you have to send `\[*bot_tuit_command*][number ending in 10]`. For instance if our *bot_tuit_command* is *"MyTLIsGreat"*, and you want 400 links with links (if there is less than 400, it sends all that Twitter API can) (400 is ends in 10, so, for instance, you can't 401 or 15), the command to send from client will be `\MyTLIsGreat400`.
