@@ -85,11 +85,18 @@ var getTweetsWithLinks = function (client, ctx, userData, numberOfTweetsWithLink
             var newNumberOfTweets_1 = numberOfTweetsWithLinks - allTweets.length;
             console.log(newNumberOfTweets_1); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             if (newNumberOfTweets_1 > 0) {
-                nextCurrentMaxId = utils_1.getLastTweetId(tweets);
-                console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + nextCurrentMaxId); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                console.log("Date last tuit: " + tweets[tweets.length - 1].created_at); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                // Launch getTweetsWithLinks without recursivity.
-                setTimeout(function () { return getTweetsWithLinks(client, ctx, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, nextCurrentMaxId); }, 0);
+                var lastTweetId = utils_1.getLastTweetId(tweets);
+                if (nextCurrentMaxId !== lastTweetId) {
+                    nextCurrentMaxId = lastTweetId;
+                    console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + nextCurrentMaxId); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                    console.log("Date last tuit: " + tweets[tweets.length - 1].created_at); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                    // Launch getTweetsWithLinks without recursivity.
+                    setTimeout(function () { return getTweetsWithLinks(client, ctx, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, nextCurrentMaxId); }, 0);
+                }
+                else {
+                    debugTweetsInFile();
+                    onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);
+                }
             }
             else {
                 debugTweetsInFile();

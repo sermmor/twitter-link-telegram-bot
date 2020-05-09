@@ -135,11 +135,18 @@ const getTweetsWithLinks = (
 
             console.log(newNumberOfTweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             if (newNumberOfTweets > 0) {
-                nextCurrentMaxId = getLastTweetId(<any> tweets);
-                console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${nextCurrentMaxId}`); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                console.log(`Date last tuit: ${tweets[tweets.length - 1].created_at}`);  // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                // Launch getTweetsWithLinks without recursivity.
-                setTimeout(() => getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, nextCurrentMaxId), 0);
+                let lastTweetId = getLastTweetId(<any> tweets);
+                if (nextCurrentMaxId !== lastTweetId) {
+                    nextCurrentMaxId = lastTweetId;
+                    console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${nextCurrentMaxId}`); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                    console.log(`Date last tuit: ${tweets[tweets.length - 1].created_at}`);  // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                    // Launch getTweetsWithLinks without recursivity.
+                    setTimeout(() => getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, nextCurrentMaxId), 0);
+                } else {
+                    // Maximum tweets TL number reached.
+                    debugTweetsInFile();
+                    onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);
+                }
             } else {
                 debugTweetsInFile();
                 onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);
