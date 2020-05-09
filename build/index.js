@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -9,12 +20,16 @@ var fs_1 = require("fs");
 var utils_1 = require("./utils");
 var twitter_data_1 = require("./twitter-data");
 var telegram_data_1 = require("./telegram-data");
+var twitterTLEndpoint = 'statuses/home_timeline';
+var twitterListEndpoint = 'lists/statuses';
 var networksPath = 'build/networks.json';
-var maxNumberOfTweetsWithLinks = 2000;
+var pathFinishedVideo = 'build/finished.mp4';
+var pathStartedVideo = 'build/start.mp4';
+var maxNumberOfTweetsWithLinks = 1000;
 var tweetsByResquest = 200; // The max is 200. https://developer.twitter.com/en/docs/tweets/timelines/api-reference/get-statuses-home_timeline
 var sixteenMinutesInMilliseconds = 1000 * 60 * 16;
 var accTweets = [];
-var allResponseAcc = [];
+var numberOfResponses = 0;
 var nextCurrentMaxId = undefined;
 fs_1.readFile(networksPath, function (err, data) {
     if (err)
@@ -23,6 +38,9 @@ fs_1.readFile(networksPath, function (err, data) {
     var telegramBotData = telegram_data_1.extractTelegramData(userData);
     var bot = new telegraf_1.default(telegramBotData.telegram_bot_token); // Also you can use process.env.BOT_TOKEN here.
     var numberOfTweetsWithLinks = buildNumberOfTweetsWithLinks(maxNumberOfTweetsWithLinks);
+    bot.start(function (ctx) {
+        ctx.replyWithVideo({ source: pathStartedVideo });
+    });
     buildBotCommands(userData, bot, telegramBotData, numberOfTweetsWithLinks);
     bot.launch();
     console.log("> The bot is ready.");
@@ -45,11 +63,11 @@ var buildBotCommands = function (userData, bot, telegramBotData, numberOfTweetsW
 var sendTuitWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
     var userTwitterData = twitter_data_1.extractTwitterData(userData);
     accTweets = [];
-    allResponseAcc = [];
+    numberOfResponses = 0;
     var client = new twitter_1.default(userData);
-    getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks);
+    getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks, twitterTLEndpoint);
 };
-var handleTwitsWithLinks = function (client, userData, ctx, numberOfTuits, tweets, error) {
+var handleTwitsWithLinks = function (client, userData, ctx, numberOfTuits, tweets, twitterEndpoint, error) {
     console.log("> The bot is going to launch a result.");
     // Send tweets to Telegram (1 tweet by second).
     var lastIndex = (tweets && tweets.length > 0) ? tweets.length : 0;
@@ -69,17 +87,23 @@ var handleTwitsWithLinks = function (client, userData, ctx, numberOfTuits, tweet
         }, lastIndex * 1000);
         setTimeout(function () {
             accTweets = [];
-            allResponseAcc = [];
-            getTweetsWithLinks(client, ctx, userData, numberOfTuits, handleTwitsWithLinks, nextCurrentMaxId);
+            numberOfResponses = 0;
+            getTweetsWithLinks(client, ctx, userData, numberOfTuits, handleTwitsWithLinks, twitterEndpoint, nextCurrentMaxId);
         }, sixteenMinutesInMilliseconds);
     }
+    else {
+        setTimeout(function () {
+            ctx.reply("FINISHED!!! (most earlier update: " + tweets[lastIndex - 1].createdAt + ")");
+            ctx.replyWithVideo({ source: pathFinishedVideo });
+        }, lastIndex * 1000);
+    }
 };
-var getTweetsWithLinks = function (client, ctx, userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, currentMaxId) {
-    var params = prepareTwitterResquestParams(currentMaxId);
-    client.get('statuses/home_timeline', params, function (error, tweets, response) {
+var getTweetsWithLinks = function (client, ctx, userData, numberOfTweetsWithLinks, onTuitsWithLinksGetted, twitterEndpoint, currentMaxId) {
+    var params = prepareTwitterResquestParams(twitterEndpoint, currentMaxId);
+    client.get(twitterEndpoint, params, function (error, tweets, response) {
         if (!error) {
-            allResponseAcc = allResponseAcc.concat(tweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
             var allTweets = utils_1.extractMessagesFromTweets(tweets);
+            numberOfResponses = numberOfResponses + tweets.length; // TODO: COMMENT THIS, ONLY FOR DEBUG.
             allTweets = utils_1.filterTweets(allTweets);
             accTweets = accTweets.concat(allTweets);
             var newNumberOfTweets_1 = numberOfTweetsWithLinks - allTweets.length;
@@ -91,41 +115,45 @@ var getTweetsWithLinks = function (client, ctx, userData, numberOfTweetsWithLink
                     console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + nextCurrentMaxId); // TODO: COMMENT THIS, ONLY FOR DEBUG.
                     console.log("Date last tuit: " + tweets[tweets.length - 1].created_at); // TODO: COMMENT THIS, ONLY FOR DEBUG.
                     // Launch getTweetsWithLinks without recursivity.
-                    setTimeout(function () { return getTweetsWithLinks(client, ctx, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, nextCurrentMaxId); }, 0);
+                    setTimeout(function () { return getTweetsWithLinks(client, ctx, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, twitterEndpoint, nextCurrentMaxId); }, 0);
                 }
                 else {
+                    // Maximum tweets TL number reached.
                     debugTweetsInFile();
-                    onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);
+                    onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint);
                 }
             }
             else {
                 debugTweetsInFile();
-                onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets);
+                onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint);
             }
         }
         else {
             debugTweetsInFile();
-            onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, error);
+            onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint, error);
             console.error(error);
         }
     });
 };
 // We are using the modern twitter API https://developer.twitter.com/en/docs/tweets/tweet-updates
-var prepareTwitterResquestParams = function (currentMaxId) { return (currentMaxId ? {
-    count: tweetsByResquest,
-    exclude_replies: true,
-    max_id: currentMaxId,
-    tweet_mode: 'extended',
-} :
-    {
+var prepareTwitterResquestParams = function (twitterEndpoint, currentMaxId) {
+    var resquestParams = {
         count: tweetsByResquest,
         exclude_replies: true,
         tweet_mode: 'extended',
-    }); };
+    };
+    if (twitterEndpoint === twitterTLEndpoint) {
+        // ! CASE TL.
+    }
+    else if (twitterEndpoint == twitterListEndpoint) {
+        // ! CASE LIST.
+    }
+    return currentMaxId ? __assign(__assign({}, resquestParams), { max_id: currentMaxId }) : resquestParams;
+};
 var debugTweetsInFile = function () {
     // const strAllTuits: string = JSON.stringify(accTweets, null, 2); // TODO: COMMENT THIS, ONLY FOR DEBUG.
     // writeFileSync('tuits.json', strAllTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
     // const allTuits: string = JSON.stringify(allResponseAcc, null, 2); // TODO: COMMENT THIS, ONLY FOR DEBUG.
     // writeFileSync('tuits.json', allTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    console.log("allTuits: " + allResponseAcc.length + " vs messages: " + accTweets.length);
+    console.log("allTuits: " + numberOfResponses + " vs messages: " + accTweets.length);
 };
