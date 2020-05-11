@@ -83,6 +83,7 @@ const sendTuitListWithLinksToTelegram = (
     list_id: string,
     numberOfTuits: number
 ) => {
+    ctx.reply(`Lets go to work!`);
     const userTwitterData = extractTwitterData(userData);
     
     accTweets = [];
@@ -99,6 +100,7 @@ const sendTuitTLWithLinksToTelegram = (
     ctx: TelegrafContext,
     numberOfTuits: number
 ) => {
+    ctx.reply(`Lets go to work!`);
     const userTwitterData = extractTwitterData(userData);
     
     accTweets = [];
@@ -152,8 +154,9 @@ const handleTwitsWithLinks = (
         }, sixteenMinutesInMilliseconds);
     } else {
         setTimeout(() => {
-            ctx.reply(`FINISHED!!! (most earlier update: ${tweets[lastIndex - 1].createdAt})`);
+            ctx.reply(`I FINISHED!!! (most earlier update: ${tweets[lastIndex - 1].createdAt})`);
             ctx.replyWithVideo({ source: pathFinishedVideo });
+            console.log("> Bot has finished of sending tuits with links.")
         }, lastIndex * 1000);
     }
 }
@@ -179,36 +182,43 @@ const getTweetsWithLinks = (
     client.get(twitterEndpoint, params, function(error, tweets, response) {
         if (!error) {
             let allTweets: MessageData[] = extractMessagesFromTweets(<any> tweets);
-            numberOfResponses = numberOfResponses + tweets.length; // TODO: COMMENT THIS, ONLY FOR DEBUG.
+            numberOfResponses = numberOfResponses + tweets.length;
             allTweets = filterTweets(allTweets);
             accTweets = accTweets.concat(allTweets);
             const newNumberOfTweets = numberOfTweetsWithLinks - allTweets.length;
 
-            console.log(newNumberOfTweets); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+            let logToReply = `Until now I have get ${accTweets.length} tweets with links from a total of ${numberOfResponses} tweets.`;
+            sendMessageInConsoleAndTelegram(ctx, logToReply);
+            
             if (newNumberOfTweets > 0) {
                 let lastTweetId = getLastTweetId(<any> tweets);
                 if (nextCurrentMaxId !== lastTweetId) {
                     nextCurrentMaxId = lastTweetId;
-                    console.log(`Last tuit: https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${nextCurrentMaxId}`); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                    console.log(`Date last tuit: ${tweets[tweets.length - 1].created_at}`);  // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                    logToReply = `Date last tweets: ${tweets[tweets.length - 1].created_at} (https://twitter.com/${tweets[tweets.length - 1].user.screen_name}/status/${nextCurrentMaxId}). I'm stil working on.`;
+                    sendMessageInConsoleAndTelegram(ctx, logToReply);
+
                     // Launch getTweetsWithLinks without recursivity.
                     setTimeout(() => getTweetsWithLinks(client, ctx, userData, newNumberOfTweets, onTuitsWithLinksGetted, twitterEndpoint, nextCurrentMaxId), 0);
                 } else {
                     // Maximum tweets TL number reached.
-                    debugTweetsInFile();
+                    sendMessageInConsoleAndTelegram(ctx, "IT'S SHOWTIME!");
                     onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint);
                 }
             } else {
-                debugTweetsInFile();
+                sendMessageInConsoleAndTelegram(ctx, "IT'S SHOWTIME!");
                 onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint);
             }
         } else {
-            debugTweetsInFile();
             onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint, error);
             console.error(error);
         }
     });
 };
+
+const sendMessageInConsoleAndTelegram = (ctx: TelegrafContext, logToReply: string) => {
+    console.log(`> ${logToReply}`);
+    ctx.reply(logToReply);
+}
 
 // We are using the modern twitter API https://developer.twitter.com/en/docs/tweets/tweet-updates
 const prepareTwitterResquestParams = (twitterEndpoint: string, currentMaxId?: string): ResquestParams => {
@@ -231,11 +241,9 @@ const prepareTwitterResquestParams = (twitterEndpoint: string, currentMaxId?: st
 };
 
 const debugTweetsInFile = () => {
-    // const strAllTuits: string = JSON.stringify(accTweets, null, 2); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    // writeFileSync('tuits.json', strAllTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+    // const strAllTuits: string = JSON.stringify(accTweets, null, 2);
+    // writeFileSync('tuits.json', strAllTuits);
     
-    // const allTuits: string = JSON.stringify(allResponseAcc, null, 2); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    // writeFileSync('tuits.json', allTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-
-    console.log(`allTuits: ${numberOfResponses} vs messages: ${accTweets.length}`);
+    // const allTuits: string = JSON.stringify(allResponseAcc, null, 2);
+    // writeFileSync('tuits.json', allTuits);
 };

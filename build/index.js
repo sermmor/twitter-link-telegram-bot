@@ -72,6 +72,7 @@ var buildBotCommands = function (userData, bot, telegramBotData, numberOfTweetsW
 };
 // https://developer.twitter.com/en/docs/accounts-and-users/create-manage-lists/api-reference/get-lists-statuses
 var sendTuitListWithLinksToTelegram = function (userData, ctx, list_id, numberOfTuits) {
+    ctx.reply("Lets go to work!");
     var userTwitterData = twitter_data_1.extractTwitterData(userData);
     accTweets = [];
     numberOfResponses = 0;
@@ -81,6 +82,7 @@ var sendTuitListWithLinksToTelegram = function (userData, ctx, list_id, numberOf
     getTweetsWithLinks(client, ctx, userTwitterData, numberOfTuits, handleTwitsWithLinks, twitterListEndpoint);
 };
 var sendTuitTLWithLinksToTelegram = function (userData, ctx, numberOfTuits) {
+    ctx.reply("Lets go to work!");
     var userTwitterData = twitter_data_1.extractTwitterData(userData);
     accTweets = [];
     numberOfResponses = 0;
@@ -115,8 +117,9 @@ var handleTwitsWithLinks = function (client, userData, ctx, numberOfTuits, tweet
     }
     else {
         setTimeout(function () {
-            ctx.reply("FINISHED!!! (most earlier update: " + tweets[lastIndex - 1].createdAt + ")");
+            ctx.reply("I FINISHED!!! (most earlier update: " + tweets[lastIndex - 1].createdAt + ")");
             ctx.replyWithVideo({ source: pathFinishedVideo });
+            console.log("> Bot has finished of sending tuits with links.");
         }, lastIndex * 1000);
     }
 };
@@ -125,37 +128,41 @@ var getTweetsWithLinks = function (client, ctx, userData, numberOfTweetsWithLink
     client.get(twitterEndpoint, params, function (error, tweets, response) {
         if (!error) {
             var allTweets = utils_1.extractMessagesFromTweets(tweets);
-            numberOfResponses = numberOfResponses + tweets.length; // TODO: COMMENT THIS, ONLY FOR DEBUG.
+            numberOfResponses = numberOfResponses + tweets.length;
             allTweets = utils_1.filterTweets(allTweets);
             accTweets = accTweets.concat(allTweets);
             var newNumberOfTweets_1 = numberOfTweetsWithLinks - allTweets.length;
-            console.log(newNumberOfTweets_1); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+            var logToReply = "Until now I have get " + accTweets.length + " tweets with links from a total of " + numberOfResponses + " tweets.";
+            sendMessageInConsoleAndTelegram(ctx, logToReply);
             if (newNumberOfTweets_1 > 0) {
                 var lastTweetId = utils_1.getLastTweetId(tweets);
                 if (nextCurrentMaxId !== lastTweetId) {
                     nextCurrentMaxId = lastTweetId;
-                    console.log("Last tuit: https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + nextCurrentMaxId); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-                    console.log("Date last tuit: " + tweets[tweets.length - 1].created_at); // TODO: COMMENT THIS, ONLY FOR DEBUG.
+                    logToReply = "Date last tweets: " + tweets[tweets.length - 1].created_at + " (https://twitter.com/" + tweets[tweets.length - 1].user.screen_name + "/status/" + nextCurrentMaxId + "). I'm stil working on.";
+                    sendMessageInConsoleAndTelegram(ctx, logToReply);
                     // Launch getTweetsWithLinks without recursivity.
                     setTimeout(function () { return getTweetsWithLinks(client, ctx, userData, newNumberOfTweets_1, onTuitsWithLinksGetted, twitterEndpoint, nextCurrentMaxId); }, 0);
                 }
                 else {
                     // Maximum tweets TL number reached.
-                    debugTweetsInFile();
+                    sendMessageInConsoleAndTelegram(ctx, "IT'S SHOWTIME!");
                     onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint);
                 }
             }
             else {
-                debugTweetsInFile();
+                sendMessageInConsoleAndTelegram(ctx, "IT'S SHOWTIME!");
                 onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint);
             }
         }
         else {
-            debugTweetsInFile();
             onTuitsWithLinksGetted(client, userData, ctx, numberOfTweetsWithLinks, accTweets, twitterEndpoint, error);
             console.error(error);
         }
     });
+};
+var sendMessageInConsoleAndTelegram = function (ctx, logToReply) {
+    console.log("> " + logToReply);
+    ctx.reply(logToReply);
 };
 // We are using the modern twitter API https://developer.twitter.com/en/docs/tweets/tweet-updates
 var prepareTwitterResquestParams = function (twitterEndpoint, currentMaxId) {
@@ -173,9 +180,8 @@ var prepareTwitterResquestParams = function (twitterEndpoint, currentMaxId) {
     return currentMaxId ? __assign(__assign({}, resquestParams), { max_id: currentMaxId }) : resquestParams;
 };
 var debugTweetsInFile = function () {
-    // const strAllTuits: string = JSON.stringify(accTweets, null, 2); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    // writeFileSync('tuits.json', strAllTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    // const allTuits: string = JSON.stringify(allResponseAcc, null, 2); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    // writeFileSync('tuits.json', allTuits); // TODO: COMMENT THIS, ONLY FOR DEBUG.
-    console.log("allTuits: " + numberOfResponses + " vs messages: " + accTweets.length);
+    // const strAllTuits: string = JSON.stringify(accTweets, null, 2);
+    // writeFileSync('tuits.json', strAllTuits);
+    // const allTuits: string = JSON.stringify(allResponseAcc, null, 2);
+    // writeFileSync('tuits.json', allTuits);
 };
